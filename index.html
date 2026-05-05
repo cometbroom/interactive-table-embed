@@ -54,7 +54,8 @@
 
         <!-- Table -->
         <div class="bg-zinc-900 border border-zinc-800 rounded-l overflow-hidden shadow-l">
-            <table class="w-full border-collapse">
+            <table class="w-full table-fixed border-collapse">
+                <colgroup id="tableColumns"></colgroup>
                 <thead id="tableHead" class="bg-zinc-950 border-b text-sm border-zinc-800"></thead>
                 <tbody id="tableBody" class="divide-y divide-zinc-800 text-sm"></tbody>
             </table>
@@ -139,12 +140,33 @@
         }
 
         // Build dynamic table header
+        function renderColumnWidths() {
+            const colgroup = document.getElementById('tableColumns');
+            colgroup.innerHTML = '';
+
+            const weights = config.columns.map(col => {
+                const value = config.example && Object.prototype.hasOwnProperty.call(config.example, col)
+                    ? config.example[col]
+                    : '';
+
+                return Math.max(String(value ?? '').length, 4);
+            });
+
+            const totalWeight = weights.reduce((sum, weight) => sum + weight, 0) || config.columns.length || 1;
+
+            weights.forEach(weight => {
+                const col = document.createElement('col');
+                col.style.width = `${(weight / totalWeight) * 100}%`;
+                colgroup.appendChild(col);
+            });
+        }
+
         function renderHeader() {
             const thead = document.getElementById('tableHead');
             thead.innerHTML = '';
 
             const tr = document.createElement('tr');
-            tr.className = 'bg-zinc-950 border-b border-zinc-800';
+            tr.className = 'bg-zinc-950 border-zinc-800';
 
             // Row number column
             let html = ``;
@@ -152,11 +174,8 @@
             // Dynamic columns
             config.columns.forEach(col => {
                 const label = config.labels[col] || col;
-                html += `<th class="px-2 py-2 text-left text-s font-semibold tracking-wider text-zinc-300">${label}</th>`;
+                html += `<th class="px-2 py-1 text-left text-xs font-semibold tracking-wider text-zinc-300">${label}</th>`;
             });
-
-            // Action column
-            html += `<th class="w-1 px-1 py-2"></th>`;
 
             tr.innerHTML = html;
             thead.appendChild(tr);
@@ -297,6 +316,7 @@
         // Initialize everything
         function init() {
             applyHeader();
+            renderColumnWidths();
             renderHeader();
             loadData();
 
