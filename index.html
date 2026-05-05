@@ -4,91 +4,215 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Interactive Table</title>
+    <title>Interactive Exercise Table</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        .example-row input[readonly] {
+            background-color: #1f2937;
+            color: #fbbf24;
+            cursor: not-allowed;
+        }
+
+        .example-row {
+            background-color: #1f2937;
+        }
+    </style>
 </head>
 
 <body class="bg-zinc-950 text-zinc-200 p-6">
-    <div class="max-w-5xl mx-auto">
-        <!-- Header -->
-        <div class="flex items-center justify-between mb-6">
-            <div>
-                <h1 class="text-3xl font-semibold">Project Tasks</h1>
-                <p class="text-zinc-400 text-sm mt-1">Edit cells • Add/remove rows • Auto-saved in your browser</p>
+    <div class="max-w-6xl mx-auto">
+        <!-- Dynamic Header -->
+        <div class="mb-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 id="tableTitle" class="text-3xl font-semibold tracking-tight">Key Concepts Table</h1>
+                    <p id="tableSubtitle" class="text-zinc-400 mt-1">Fill in the blank rows below. The top row is a
+                        completed example.</p>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button onclick="addRow()"
+                        class="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 rounded-2xl text-sm font-medium transition-all shadow-lg shadow-emerald-950">
+                        <i class="fa-solid fa-plus"></i>
+                        <span>Add blank row</span>
+                    </button>
+
+                    <button onclick="resetToTemplate()"
+                        class="flex items-center gap-2 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 active:bg-zinc-600 rounded-2xl text-sm font-medium transition-all">
+                        <i class="fa-solid fa-undo"></i>
+                        <span>Reset to template</span>
+                    </button>
+
+                    <button onclick="exportCSV()"
+                        class="flex items-center gap-2 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 active:bg-zinc-600 rounded-2xl text-sm font-medium transition-all">
+                        <i class="fa-solid fa-download"></i>
+                        <span>Export CSV</span>
+                    </button>
+                </div>
             </div>
-            <div class="flex gap-2">
-                <button onclick="addRow()"
-                    class="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-sm font-medium transition-colors">
-                    <i class="fa-solid fa-plus"></i> Add Row
-                </button>
-                <button onclick="exportCSV()"
-                    class="flex items-center gap-2 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 rounded-xl text-sm font-medium transition-colors">
-                    <i class="fa-solid fa-download"></i> Export CSV
-                </button>
-                <button onclick="clearData()"
-                    class="flex items-center gap-2 px-4 py-2 bg-red-900/80 hover:bg-red-900 rounded-xl text-sm font-medium transition-colors">
-                    <i class="fa-solid fa-trash"></i> Clear All
-                </button>
+
+            <div class="mt-3 text-xs text-zinc-500 flex items-center gap-2">
+                <i class="fa-solid fa-info-circle"></i>
+                <span>Your answers are saved automatically in this browser. Each student sees their own work.</span>
             </div>
         </div>
 
         <!-- Table -->
-        <div class="bg-zinc-900 border border-zinc-800 rounded-3xl overflow-hidden shadow-xl">
-            <table class="w-full">
-                <thead>
-                    <tr class="bg-zinc-950 border-b border-zinc-800">
-                        <th class="px-6 py-4 text-left text-xs font-semibold tracking-widest text-zinc-400 w-12">#</th>
-                        <th class="px-6 py-4 text-left text-xs font-semibold tracking-widest text-zinc-400">TASK</th>
-                        <th class="px-6 py-4 text-left text-xs font-semibold tracking-widest text-zinc-400">ASSIGNEE
-                        </th>
-                        <th class="px-6 py-4 text-left text-xs font-semibold tracking-widest text-zinc-400 w-40">DUE
-                            DATE</th>
-                        <th class="px-6 py-4 text-left text-xs font-semibold tracking-widest text-zinc-400 w-32">STATUS
-                        </th>
-                        <th class="px-6 py-4 text-left text-xs font-semibold tracking-widest text-zinc-400">NOTES</th>
-                        <th class="px-4 py-4 w-12"></th>
-                    </tr>
-                </thead>
+        <div class="bg-zinc-900 border border-zinc-800 rounded-3xl overflow-hidden shadow-2xl">
+            <table class="w-full border-collapse">
+                <thead id="tableHead" class="bg-zinc-950 border-b border-zinc-800"></thead>
                 <tbody id="tableBody" class="divide-y divide-zinc-800 text-sm"></tbody>
             </table>
         </div>
 
-        <div class="mt-4 text-center text-xs text-zinc-500">
-            Data is saved automatically in your browser's localStorage. It won't be shared with other visitors.
+        <div class="mt-4 flex justify-between items-center text-xs text-zinc-500 px-1">
+            <div>
+                Tip: Press <span class="font-mono bg-zinc-900 px-1.5 py-0.5 rounded">Enter</span> in the last input to
+                add a new blank row.
+            </div>
+            <div class="text-emerald-500/70">Auto-saved • Private to your browser</div>
         </div>
     </div>
 
     <script>
-        // === CUSTOMIZE THESE COLUMNS ===
-        const columns = ['task', 'assignee', 'dueDate', 'status', 'notes'];
-        const columnLabels = {
-            task: 'Task',
-            assignee: 'Assignee',
-            dueDate: 'Due Date',
-            status: 'Status',
-            notes: 'Notes'
+        // =============================================
+        // DEFAULT CONFIG (can be overridden via ?config=... query param)
+        // =============================================
+        const defaultConfig = {
+            title: "Key Concepts Table",
+            subtitle: "Fill in the blank rows below. The top row is a completed example.",
+            columns: ['concept', 'definition', 'example', 'notes'],
+            labels: {
+                concept: 'Concept',
+                definition: 'Definition / Explanation',
+                example: 'Example',
+                notes: 'Your Notes / Reflection'
+            },
+            example: {
+                concept: 'Growth Mindset',
+                definition: 'The belief that abilities and intelligence can be developed through dedication, hard work, and learning from mistakes.',
+                example: 'A student who says "I can\'t do math" changes to "I can\'t do math yet — I need more practice."',
+                notes: 'Carol Dweck\'s research. Very useful for learning new skills.'
+            },
+            blankRows: 5,
+            storageKey: 'exerciseTable_v1'
         };
+
+        // =============================================
+        // LOAD CONFIG FROM URL QUERY PARAMETER
+        // =============================================
+        let config = { ...defaultConfig };
+
+        function loadConfigFromURL() {
+            const params = new URLSearchParams(window.location.search);
+
+            if (params.has('config')) {
+                try {
+                    const raw = decodeURIComponent(params.get('config'));
+                    const userConfig = JSON.parse(raw);
+
+                    // Merge top-level
+                    if (userConfig.title) config.title = userConfig.title;
+                    if (userConfig.subtitle) config.subtitle = userConfig.subtitle;
+                    if (userConfig.storageKey) config.storageKey = userConfig.storageKey;
+                    if (typeof userConfig.blankRows === 'number') config.blankRows = userConfig.blankRows;
+
+                    // Merge columns array
+                    if (Array.isArray(userConfig.columns) && userConfig.columns.length > 0) {
+                        config.columns = userConfig.columns;
+                    }
+
+                    // Deep merge labels
+                    if (userConfig.labels && typeof userConfig.labels === 'object') {
+                        config.labels = { ...config.labels, ...userConfig.labels };
+                    }
+
+                    // Deep merge example
+                    if (userConfig.example && typeof userConfig.example === 'object') {
+                        config.example = { ...config.example, ...userConfig.example };
+                    }
+
+                    console.log('%c[Exercise Table] Custom config loaded from URL', 'color:#22c55e');
+                } catch (e) {
+                    console.warn('%c[Exercise Table] Invalid config in URL. Using defaults.', 'color:#f59e0b', e);
+                }
+            }
+        }
+
+        // Call immediately
+        loadConfigFromURL();
+
+        // Apply dynamic title/subtitle
+        function applyHeader() {
+            document.getElementById('tableTitle').textContent = config.title;
+            document.getElementById('tableSubtitle').textContent = config.subtitle;
+            document.title = config.title;
+        }
+
+        // Build dynamic table header
+        function renderHeader() {
+            const thead = document.getElementById('tableHead');
+            thead.innerHTML = '';
+
+            const tr = document.createElement('tr');
+            tr.className = 'bg-zinc-950 border-b border-zinc-800';
+
+            // Row number column
+            let html = `<th class="w-14 px-4 py-4 text-left text-[10px] font-mono tracking-[2px] text-zinc-500">#</th>`;
+
+            // Dynamic columns
+            config.columns.forEach(col => {
+                const label = config.labels[col] || col;
+                html += `<th class="px-6 py-4 text-left text-xs font-semibold tracking-wider text-zinc-300">${label}</th>`;
+            });
+
+            // Action column
+            html += `<th class="w-10 px-2 py-4"></th>`;
+
+            tr.innerHTML = html;
+            thead.appendChild(tr);
+        }
 
         let data = [];
 
-        function loadData() {
-            const saved = localStorage.getItem('notionInteractiveTable');
-            if (saved) {
-                data = JSON.parse(saved);
-            } else {
-                // Optional: start with sample data
-                data = [
-                    { task: 'Design homepage', assignee: 'Alex', dueDate: '2026-02-15', status: 'In Progress', notes: '' },
-                    { task: 'API integration', assignee: 'Sam', dueDate: '2026-02-20', status: 'Todo', notes: 'Need auth tokens' }
-                ];
-                saveData();
+        function getTemplateData() {
+            const template = [{ ...config.example }];
+
+            for (let i = 0; i < config.blankRows; i++) {
+                const blank = {};
+                config.columns.forEach(col => blank[col] = '');
+                template.push(blank);
             }
+            return template;
+        }
+
+        function loadData() {
+            const saved = localStorage.getItem(config.storageKey);
+
+            if (saved) {
+                try {
+                    data = JSON.parse(saved);
+
+                    // Always ensure first row matches current example
+                    if (data.length > 0) {
+                        data[0] = { ...config.example };
+                    } else {
+                        data = getTemplateData();
+                    }
+                } catch (e) {
+                    console.warn('Could not parse saved data, resetting.');
+                    data = getTemplateData();
+                }
+            } else {
+                data = getTemplateData();
+            }
+
+            saveData();
             renderTable();
         }
 
         function saveData() {
-            localStorage.setItem('notionInteractiveTable', JSON.stringify(data));
+            localStorage.setItem(config.storageKey, JSON.stringify(data));
         }
 
         function renderTable() {
@@ -96,36 +220,66 @@
             tbody.innerHTML = '';
 
             data.forEach((row, index) => {
+                const isExample = index === 0;
+
                 const tr = document.createElement('tr');
-                tr.className = 'hover:bg-zinc-800/50 transition-colors group';
+                tr.className = isExample
+                    ? 'example-row group'
+                    : 'hover:bg-zinc-800/40 group transition-colors';
 
-                // Row number
-                let html = `<td class="px-6 py-3 text-zinc-500 font-mono text-xs">${index + 1}</td>`;
+                // Row indicator
+                let rowIndicator = isExample
+                    ? `<span class="inline-flex items-center justify-center w-7 h-7 text-[10px] font-bold bg-amber-400 text-amber-950 rounded-full">EX</span>`
+                    : `<span class="text-zinc-500 font-mono text-xs">${index}</span>`;
 
-                // Editable cells
-                columns.forEach(col => {
+                let html = `
+                    <td class="px-4 py-3.5 align-top">
+                        <div class="flex items-center justify-center">${rowIndicator}</div>
+                    </td>
+                `;
+
+                // Dynamic cells
+                config.columns.forEach(col => {
                     const value = row[col] || '';
+                    const isReadonly = isExample;
+
                     html += `
-                        <td class="px-6 py-3">
+                        <td class="px-5 py-3.5 align-top">
                             <input 
                                 type="text" 
                                 value="${value.replace(/"/g, '&quot;')}" 
-                                class="w-full bg-transparent border border-transparent hover:border-zinc-700 focus:border-emerald-500 focus:bg-zinc-950 rounded-lg px-3 py-1.5 text-sm outline-none transition-all"
+                                ${isReadonly ? 'readonly' : ''}
+                                class="w-full bg-transparent border border-transparent ${isReadonly
+                            ? 'text-amber-300 placeholder-amber-700/50'
+                            : 'hover:border-zinc-700 focus:border-emerald-500 focus:bg-zinc-950'} 
+                                   rounded-xl px-3.5 py-2 text-sm outline-none transition-all placeholder:text-zinc-600"
+                                placeholder="${isReadonly ? '' : 'Type here...'}"
                                 oninput="updateCell(${index}, '${col}', this.value)"
                             >
                         </td>
                     `;
                 });
 
-                // Delete button
-                html += `
-                    <td class="px-4 py-3 text-right">
-                        <button onclick="deleteRow(${index})" 
-                                class="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-500 p-2 transition-all">
-                            <i class="fa-solid fa-trash text-sm"></i>
-                        </button>
-                    </td>
-                `;
+                // Action column
+                if (isExample) {
+                    html += `
+                        <td class="px-2 py-3.5 align-top">
+                            <div class="flex justify-center">
+                                <span class="text-[10px] px-2 py-0.5 rounded-full bg-amber-400/10 text-amber-400 font-medium">EXAMPLE</span>
+                            </div>
+                        </td>
+                    `;
+                } else {
+                    html += `
+                        <td class="px-2 py-3.5 align-top">
+                            <button onclick="deleteRow(${index})" 
+                                    class="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-500 p-2 transition-all"
+                                    title="Delete this row">
+                                <i class="fa-solid fa-trash text-sm"></i>
+                            </button>
+                        </td>
+                    `;
+                }
 
                 tr.innerHTML = html;
                 tbody.appendChild(tr);
@@ -139,13 +293,21 @@
 
         function addRow() {
             const newRow = {};
-            columns.forEach(col => newRow[col] = '');
+            config.columns.forEach(col => newRow[col] = '');
             data.push(newRow);
             saveData();
             renderTable();
+
+            setTimeout(() => {
+                const inputs = document.querySelectorAll('#tableBody input:not([readonly])');
+                if (inputs.length > 0) {
+                    inputs[inputs.length - config.columns.length].focus();
+                }
+            }, 50);
         }
 
         function deleteRow(index) {
+            if (index === 0) return;
             if (confirm('Delete this row?')) {
                 data.splice(index, 1);
                 saveData();
@@ -153,60 +315,64 @@
             }
         }
 
-        function clearData() {
-            if (confirm('Clear all data? This cannot be undone.')) {
-                data = [];
-                localStorage.removeItem('notionInteractiveTable');
-                renderTable();
-            }
+        function resetToTemplate() {
+            if (!confirm('Reset everything to the original template?')) return;
+            data = getTemplateData();
+            saveData();
+            renderTable();
         }
 
         function exportCSV() {
-            if (data.length === 0) {
-                alert('No data to export!');
-                return;
-            }
+            if (data.length === 0) return alert('No data to export!');
 
-            let csv = columns.map(c => columnLabels[c] || c).join(',') + '\n';
-            data.forEach(row => {
-                const values = columns.map(col => {
+            let csv = config.columns.map(c => config.labels[c] || c).join(',') + '\n';
+
+            data.forEach((row, idx) => {
+                const values = config.columns.map(col => {
                     let val = row[col] || '';
-                    if (val.includes(',') || val.includes('"')) {
+                    if (val.includes(',') || val.includes('"') || val.includes('\n')) {
                         val = `"${val.replace(/"/g, '""')}"`;
                     }
                     return val;
                 });
-                csv += values.join(',') + '\n';
+                csv += (idx === 0 ? 'EXAMPLE,' : '') + values.join(',') + '\n';
             });
 
-            const blob = new Blob([csv], { type: 'text/csv' });
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'table-data.csv';
+            a.download = (config.title.toLowerCase().replace(/\s+/g, '-') || 'table') + '-answers.csv';
+            document.body.appendChild(a);
             a.click();
+            document.body.removeChild(a);
             URL.revokeObjectURL(url);
         }
 
-        // Keyboard support: Enter adds new row when focused on last row
+        // Keyboard support
         document.addEventListener('keydown', function (e) {
             if (e.key === 'Enter' && document.activeElement.tagName === 'INPUT') {
-                const inputs = document.querySelectorAll('#tableBody input');
-                const currentIndex = Array.from(inputs).indexOf(document.activeElement);
-                if (currentIndex === inputs.length - 1) {
+                const allInputs = Array.from(document.querySelectorAll('#tableBody input:not([readonly])'));
+                const currentIndex = allInputs.indexOf(document.activeElement);
+                if (currentIndex !== -1 && currentIndex === allInputs.length - 1) {
                     e.preventDefault();
                     addRow();
-                    // Focus first input of new row
-                    setTimeout(() => {
-                        const newInputs = document.querySelectorAll('#tableBody input');
-                        if (newInputs.length > 0) newInputs[newInputs.length - columns.length].focus();
-                    }, 50);
                 }
             }
+            if (e.key === 'Escape') document.activeElement.blur();
         });
 
-        // Initialize
-        window.onload = loadData;
+        // Initialize everything
+        function init() {
+            applyHeader();
+            renderHeader();
+            loadData();
+
+            // Helpful console message for power users
+            console.log('%c[Exercise Table] Ready. Pass config via ?config={"columns":[...],"labels":{...},"example":{...},"blankRows":5}', 'color:#64748b');
+        }
+
+        window.onload = init;
     </script>
 </body>
 
