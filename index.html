@@ -85,6 +85,8 @@
                 example: 'A student who says "I can\'t do math" changes to "I can\'t do math yet — I need more practice."',
                 notes: 'Carol Dweck\'s research. Very useful for learning new skills.'
             },
+            rowHeaderLabel: '',
+            rowHeaders: [],
             blankRows: 5,
             storageKey: 'exerciseTable_v1'
         };
@@ -106,11 +108,16 @@
                     if (userConfig.title) config.title = userConfig.title;
                     if (userConfig.subtitle) config.subtitle = userConfig.subtitle;
                     if (userConfig.storageKey) config.storageKey = userConfig.storageKey;
+                    if (typeof userConfig.rowHeaderLabel === 'string') config.rowHeaderLabel = userConfig.rowHeaderLabel;
                     if (typeof userConfig.blankRows === 'number') config.blankRows = userConfig.blankRows;
 
                     // Merge columns array
                     if (Array.isArray(userConfig.columns) && userConfig.columns.length > 0) {
                         config.columns = userConfig.columns;
+                    }
+
+                    if (Array.isArray(userConfig.rowHeaders)) {
+                        config.rowHeaders = userConfig.rowHeaders;
                     }
 
                     // Deep merge labels
@@ -136,7 +143,36 @@
         // Apply dynamic title/subtitle
         function applyHeader() {
             document.getElementById('tableSubtitle').textContent = config.subtitle;
-            document.title = config.title;
+            document.title = config.title || 'Interactive Exercise Table';
+        }
+
+        function escapeHtml(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function escapeCSVValue(value) {
+            let val = String(value ?? '');
+
+            if (val.includes(',') || val.includes('"') || val.includes('\n') || val.includes('\r')) {
+                val = `"${val.replace(/"/g, '""')}"`;
+            }
+
+            return val;
+        }
+
+        function hasRowHeaders() {
+            return Array.isArray(config.rowHeaders) && config.rowHeaders.length > 0;
+        }
+
+        function getRowHeader(index) {
+            if (!hasRowHeaders()) return '';
+
+            return config.rowHeaders[index] ?? '';
         }
 
         // Build dynamic table header
@@ -151,6 +187,13 @@
 
                 return Math.max(String(value ?? '').length, 4);
             });
+
+            if (hasRowHeaders()) {
+                const rowHeaderWeight = [config.rowHeaderLabel, ...config.rowHeaders]
+                    .reduce((max, value) => Math.max(max, String(value ?? '').length), 4);
+
+                weights.unshift(rowHeaderWeight);
+            }
 
             const totalWeight = weights.reduce((sum, weight) => sum + weight, 0) || config.columns.length || 1;
 
@@ -171,10 +214,14 @@
             // Row number column
             let html = ``;
 
+            if (hasRowHeaders()) {
+                html += `<th class="px-2 py-4 text-left text-xs font-semibold tracking-wider text-zinc-300">${escapeHtml(config.rowHeaderLabel)}</th>`;
+            }
+
             // Dynamic columns
             config.columns.forEach(col => {
                 const label = config.labels[col] || col;
-                html += `<th class="px-2 py-4 text-left text-xs font-semibold tracking-wider text-zinc-300">${label}</th>`;
+                html += `<th class="px-2 py-4 text-left text-xs font-semibold tracking-wider text-zinc-300">${escapeHtml(label)}</th>`;
             });
 
             tr.innerHTML = html;
@@ -237,6 +284,10 @@
 
                 let html = ``;
 
+                if (hasRowHeaders()) {
+                    html += `<th scope="row" class="px-2 py-2 text-left text-xs font-semibold text-zinc-400 whitespace-pre-wrap align-middle">${escapeHtml(getRowHeader(index))}</th>`;
+                }
+
                 // Dynamic cells
                 config.columns.forEach(col => {
                     const value = row[col] || '';
@@ -246,7 +297,7 @@
                         <td class="px-1 py-1 align-center">
                             <input 
                                 type="text" 
-                                value="${value.replace(/"/g, '&quot;')}" 
+                                value="${escapeHtml(value)}" 
                                 ${isReadonly ? 'readonly' : ''}
                                 class="w-full bg-transparent border border-transparent ${isReadonly
                             ? 'text-amber-300 placeholder-amber-700/50'
@@ -279,24 +330,24 @@
         function exportCSV() {
             if (data.length === 0) return alert('No data to export!');
 
-            let csv = config.columns.map(c => config.labels[c] || c).join(',') + '\n';
+            const headerValues = config.columns.map(c => escapeCSVValue(config.labels[c] || c));
+            if (hasRowHeaders()) headerValues.unshift(escapeCSVValue(config.rowHeaderLabel || 'Row'));
+
+            let csv = headerValues.join(',') + '\n';
 
             data.forEach((row, idx) => {
-                const values = config.columns.map(col => {
-                    let val = row[col] || '';
-                    if (val.includes(',') || val.includes('"') || val.includes('\n')) {
-                        val = `"${val.replace(/"/g, '""')}"`;
-                    }
-                    return val;
-                });
-                csv += (idx === 0 ? 'EXAMPLE,' : '') + values.join(',') + '\n';
+                const values = config.columns.map(col => escapeCSVValue(row[col]));
+
+                if (hasRowHeaders()) values.unshift(escapeCSVValue(getRowHeader(idx)));
+
+                csv += values.join(',') + '\n';
             });
 
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = (config.title.toLowerCase().replace(/\s+/g, '-') || 'table') + '-answers.csv';
+            a.download = ((config.title || 'table').toLowerCase().replace(/\s+/g, '-') || 'table') + '-answers.csv';
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
