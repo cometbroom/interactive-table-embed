@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Table</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+
+<body class="bg-zinc-950 text-zinc-200 p-6">
+    <div class="max-w-5xl mx-auto">
+        <!-- Header -->
+        <div class="flex items-center justify-between mb-6">
+            <div>
+                <h1 class="text-3xl font-semibold">Project Tasks</h1>
+                <p class="text-zinc-400 text-sm mt-1">Edit cells • Add/remove rows • Auto-saved in your browser</p>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="addRow()"
+                    class="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-sm font-medium transition-colors">
+                    <i class="fa-solid fa-plus"></i> Add Row
+                </button>
+                <button onclick="exportCSV()"
+                    class="flex items-center gap-2 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 rounded-xl text-sm font-medium transition-colors">
+                    <i class="fa-solid fa-download"></i> Export CSV
+                </button>
+                <button onclick="clearData()"
+                    class="flex items-center gap-2 px-4 py-2 bg-red-900/80 hover:bg-red-900 rounded-xl text-sm font-medium transition-colors">
+                    <i class="fa-solid fa-trash"></i> Clear All
+                </button>
+            </div>
+        </div>
+
+        <!-- Table -->
+        <div class="bg-zinc-900 border border-zinc-800 rounded-3xl overflow-hidden shadow-xl">
+            <table class="w-full">
+                <thead>
+                    <tr class="bg-zinc-950 border-b border-zinc-800">
+                        <th class="px-6 py-4 text-left text-xs font-semibold tracking-widest text-zinc-400 w-12">#</th>
+                        <th class="px-6 py-4 text-left text-xs font-semibold tracking-widest text-zinc-400">TASK</th>
+                        <th class="px-6 py-4 text-left text-xs font-semibold tracking-widest text-zinc-400">ASSIGNEE
+                        </th>
+                        <th class="px-6 py-4 text-left text-xs font-semibold tracking-widest text-zinc-400 w-40">DUE
+                            DATE</th>
+                        <th class="px-6 py-4 text-left text-xs font-semibold tracking-widest text-zinc-400 w-32">STATUS
+                        </th>
+                        <th class="px-6 py-4 text-left text-xs font-semibold tracking-widest text-zinc-400">NOTES</th>
+                        <th class="px-4 py-4 w-12"></th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody" class="divide-y divide-zinc-800 text-sm"></tbody>
+            </table>
+        </div>
+
+        <div class="mt-4 text-center text-xs text-zinc-500">
+            Data is saved automatically in your browser's localStorage. It won't be shared with other visitors.
+        </div>
+    </div>
+
+    <script>
+        // === CUSTOMIZE THESE COLUMNS ===
+        const columns = ['task', 'assignee', 'dueDate', 'status', 'notes'];
+        const columnLabels = {
+            task: 'Task',
+            assignee: 'Assignee',
+            dueDate: 'Due Date',
+            status: 'Status',
+            notes: 'Notes'
+        };
+
+        let data = [];
+
+        function loadData() {
+            const saved = localStorage.getItem('notionInteractiveTable');
+            if (saved) {
+                data = JSON.parse(saved);
+            } else {
+                // Optional: start with sample data
+                data = [
+                    { task: 'Design homepage', assignee: 'Alex', dueDate: '2026-02-15', status: 'In Progress', notes: '' },
+                    { task: 'API integration', assignee: 'Sam', dueDate: '2026-02-20', status: 'Todo', notes: 'Need auth tokens' }
+                ];
+                saveData();
+            }
+            renderTable();
+        }
+
+        function saveData() {
+            localStorage.setItem('notionInteractiveTable', JSON.stringify(data));
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = '';
+
+            data.forEach((row, index) => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-zinc-800/50 transition-colors group';
+
+                // Row number
+                let html = `<td class="px-6 py-3 text-zinc-500 font-mono text-xs">${index + 1}</td>`;
+
+                // Editable cells
+                columns.forEach(col => {
+                    const value = row[col] || '';
+                    html += `
+                        <td class="px-6 py-3">
+                            <input 
+                                type="text" 
+                                value="${value.replace(/"/g, '&quot;')}" 
+                                class="w-full bg-transparent border border-transparent hover:border-zinc-700 focus:border-emerald-500 focus:bg-zinc-950 rounded-lg px-3 py-1.5 text-sm outline-none transition-all"
+                                oninput="updateCell(${index}, '${col}', this.value)"
+                            >
+                        </td>
+                    `;
+                });
+
+                // Delete button
+                html += `
+                    <td class="px-4 py-3 text-right">
+                        <button onclick="deleteRow(${index})" 
+                                class="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-500 p-2 transition-all">
+                            <i class="fa-solid fa-trash text-sm"></i>
+                        </button>
+                    </td>
+                `;
+
+                tr.innerHTML = html;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function updateCell(rowIndex, column, value) {
+            data[rowIndex][column] = value;
+            saveData();
+        }
+
+        function addRow() {
+            const newRow = {};
+            columns.forEach(col => newRow[col] = '');
+            data.push(newRow);
+            saveData();
+            renderTable();
+        }
+
+        function deleteRow(index) {
+            if (confirm('Delete this row?')) {
+                data.splice(index, 1);
+                saveData();
+                renderTable();
+            }
+        }
+
+        function clearData() {
+            if (confirm('Clear all data? This cannot be undone.')) {
+                data = [];
+                localStorage.removeItem('notionInteractiveTable');
+                renderTable();
+            }
+        }
+
+        function exportCSV() {
+            if (data.length === 0) {
+                alert('No data to export!');
+                return;
+            }
+
+            let csv = columns.map(c => columnLabels[c] || c).join(',') + '\n';
+            data.forEach(row => {
+                const values = columns.map(col => {
+                    let val = row[col] || '';
+                    if (val.includes(',') || val.includes('"')) {
+                        val = `"${val.replace(/"/g, '""')}"`;
+                    }
+                    return val;
+                });
+                csv += values.join(',') + '\n';
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'table-data.csv';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // Keyboard support: Enter adds new row when focused on last row
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' && document.activeElement.tagName === 'INPUT') {
+                const inputs = document.querySelectorAll('#tableBody input');
+                const currentIndex = Array.from(inputs).indexOf(document.activeElement);
+                if (currentIndex === inputs.length - 1) {
+                    e.preventDefault();
+                    addRow();
+                    // Focus first input of new row
+                    setTimeout(() => {
+                        const newInputs = document.querySelectorAll('#tableBody input');
+                        if (newInputs.length > 0) newInputs[newInputs.length - columns.length].focus();
+                    }, 50);
+                }
+            }
+        });
+
+        // Initialize
+        window.onload = loadData;
+    </script>
+</body>
+
+</html>
